@@ -113,8 +113,27 @@ def _aggregate_model_breakdown(daily_entries: list[dict[str, Any]], top_n: int =
     return rows[:top_n]
 
 
-def fetch_claude() -> ClaudeUsage:
-    """Build a ClaudeUsage by spawning ccusage three times."""
+def _model_tokens_today(daily_entries: list[dict[str, Any]], substr: str, today_str: str) -> int:
+    """Sum tokens for models whose name contains `substr` in today's entry."""
+    total = 0
+    for e in daily_entries:
+        if _period_of(e) != today_str:
+            continue
+        for mb in e.get("modelBreakdowns", []) or []:
+            if substr in (mb.get("modelName") or "").lower():
+                total += sum(
+                    int(mb.get(k, 0))
+                    for k in ("inputTokens", "outputTokens", "cacheCreationTokens", "cacheReadTokens")
+                )
+    return total
+
+
+def fetch_claude() -> tuple[ClaudeUsage, int]:
+    """Build a ClaudeUsage by spawning ccusage three times.
+
+    Returns (claude_usage, deepseek_today_tokens) — the second value is the
+    DeepSeek-model token count for today, extracted from the same ccusage data.
+    """
     blocks_json = _run(["blocks", "--active", "--json"])
     daily_full = _run(["claude", "daily", "--json"])
     monthly_full = _run(["claude", "monthly", "--json"])
@@ -140,7 +159,7 @@ def fetch_claude() -> ClaudeUsage:
     # Lifetime: sum of all daily entries (could also use totals field)
     life_tok, life_cost = _sum_period(daily_entries)
 
-    return ClaudeUsage(
+    usage = ClaudeUsage(
         active_block=_parse_active_block(blocks_json),
         weekly=_bucket(week_tok, week_cost, WEEKLY_LIMIT_USD),
         today=_bucket(today_tok, today_cost),
@@ -148,6 +167,8 @@ def fetch_claude() -> ClaudeUsage:
         lifetime=_bucket(life_tok, life_cost),
         by_model=_aggregate_model_breakdown(daily_entries),
     )
+    ds_today = _model_tokens_today(daily_entries, "deepseek", today_str)
+    return usage, ds_today
 
 
 def fetch_other_agents() -> list[OtherAgentUsage]:

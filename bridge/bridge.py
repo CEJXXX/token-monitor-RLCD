@@ -20,12 +20,18 @@ from fastapi.responses import JSONResponse
 from schema import (
     ActiveBlock,
     Bucket,
+    ClaudeLimits,
     ClaudeUsage,
+    DeepSeek,
     ModelBreakdown,
     OtherAgentUsage,
     UsageReport,
+    Weather,
 )
 from sources.claude_local import fetch_claude, fetch_other_agents
+from sources.claude_limits import fetch_limits
+from sources.weather import fetch_weather
+from sources.deepseek import fetch_deepseek
 
 
 REFRESH_INTERVAL_SEC = int(os.environ.get("RLCD_REFRESH_SEC", "45"))
@@ -39,12 +45,15 @@ _cache: dict[str, object] = {"report": None, "ts": 0.0, "error": None}
 
 
 def _build_live_report() -> UsageReport:
-    claude = fetch_claude()
+    claude, ds_today = fetch_claude()
+    claude.limits = fetch_limits()
     others = fetch_other_agents() if INCLUDE_OTHERS else []
     return UsageReport(
         updated_at=datetime.now(timezone.utc),
         claude=claude,
         other=others,
+        weather=fetch_weather(),
+        deepseek=fetch_deepseek(ds_today),
     )
 
 
@@ -107,6 +116,11 @@ def _mock_report() -> UsageReport:
                 ModelBreakdown(model="claude-sonnet-4-6", tokens=4_400_000, cost_usd=28.00),
                 ModelBreakdown(model="claude-haiku-4-5", tokens=900_000, cost_usd=6.07),
             ],
+            limits=ClaudeLimits(
+                util_5h=0.24, util_7d=0.56, status="ok",
+                reset_5h=now.replace(hour=15, minute=0, second=0, microsecond=0),
+                reset_7d=now.replace(hour=6, minute=0, second=0, microsecond=0),
+            ),
         ),
         other=[
             OtherAgentUsage(
@@ -116,6 +130,9 @@ def _mock_report() -> UsageReport:
                 lifetime=Bucket(tokens_used=5_200_000, cost_usd=11.90),
             ),
         ],
+        weather=Weather(temp_c=24.3, code=2, condition="Partly", icon="partly", city="SHENZHEN"),
+        deepseek=DeepSeek(balance=70.79, currency="CNY", granted=0.0, topped=70.79,
+                          today_tokens=2_400_000, available=True),
     )
 
 

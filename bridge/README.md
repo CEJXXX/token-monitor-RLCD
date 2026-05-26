@@ -68,6 +68,27 @@ curl http://localhost:7777/healthz
 | `RLCD_WEEKLY_LIMIT_USD` | unset | if set (e.g. `100`), `weekly.percent_used` is computed |
 | `RLCD_BLOCK_LIMIT_USD` | unset | same for the 5h window |
 | `CCUSAGE_CMD` | `npx -y ccusage@latest` | override if you `npm i -g ccusage` and want `ccusage` directly |
+| `DEEPSEEK_API_KEY` | unset | enables the `deepseek` block (balance from `/user/balance`). Keep it in a 600-perm `EnvironmentFile`, not the unit. |
+| `RLCD_WEATHER_LAT` / `_LON` / `_CITY` | Shenzhen | open-meteo location for the `weather` block |
+| `RLCD_LIMITS_FILE` | `/run/rlcd/claude-limits.json` | where the root limits helper writes real 5h/7d utilization |
+
+### Real Claude 5h/7d utilization
+
+`claude.limits` (the numbers Claude Code's `/usage` shows) come from
+`anthropic-ratelimit-unified-*` headers on an authenticated call, which needs
+the OAuth token in root's `~/.claude/.credentials.json`. A root systemd timer
+runs `scripts/rlcd-claude-limits.py` every 3 min, writes
+`/run/rlcd/claude-limits.json`, and this daemon (running as your user) reads it:
+
+```bash
+sudo install -m 0755 scripts/rlcd-claude-limits.py /usr/local/sbin/rlcd-claude-limits.py
+sudo cp scripts/rlcd-claude-limits.{service,timer} /etc/systemd/system/
+sudo systemctl enable --now rlcd-claude-limits.timer
+```
+
+Each run costs one 1-token Haiku message (negligible). If the OAuth token
+expires and Claude Code isn't running to refresh it, `limits.status` goes
+`stale`/`err` and the device keeps showing the last good values.
 
 > Anthropic does **not** publish your Pro/Max plan's 5h or weekly limits via API.
 > The percent fields stay `null` unless you tell the bridge what your limit is via

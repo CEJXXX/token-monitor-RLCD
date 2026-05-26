@@ -1,0 +1,10 @@
+[Unit]
+Description=RLCD: refresh Claude window utilization every 3 min
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=180
+AccuracySec=10
+
+[Install]
+WantedBy=timers.target

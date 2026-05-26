@@ -1,0 +1,8 @@
+[Unit]
+Description=RLCD: fetch real Claude 5h/7d window utilization (writes /run/rlcd/claude-limits.json)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/rlcd-claude-limits.py

@@ -27,3 +27,6 @@ firmware/main/secrets.h
 # Vendor reference (kept locally; not committed)
 ESP32-S3-RLCD-4.2-Demo/
 ESP32-S3-RLCD-4.2-Demo.zip
+
+# Uploaded photos / scratch
+[0-9a-f][0-9a-f][0-9a-f][0-9a-f]*.jpg

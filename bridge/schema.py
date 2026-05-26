@@ -31,6 +31,16 @@ class ModelBreakdown(BaseModel):
     cost_usd: float
 
 
+class ClaudeLimits(BaseModel):
+    # Real Pro/Max window utilization, from anthropic-ratelimit-unified-* headers
+    # (same data Claude Code's /usage shows). 0..1, or None if unavailable.
+    util_5h: Optional[float] = None
+    util_7d: Optional[float] = None
+    reset_5h: Optional[datetime] = None
+    reset_7d: Optional[datetime] = None
+    status: str = "unavailable"   # "ok" | "stale" | "unavailable" | "err:..."
+
+
 class ClaudeUsage(BaseModel):
     active_block: Optional[ActiveBlock] = None
     weekly: Bucket
@@ -38,6 +48,7 @@ class ClaudeUsage(BaseModel):
     month: Bucket
     lifetime: Bucket
     by_model: list[ModelBreakdown] = Field(default_factory=list)
+    limits: Optional[ClaudeLimits] = None
 
 
 class OtherAgentUsage(BaseModel):
@@ -47,8 +58,27 @@ class OtherAgentUsage(BaseModel):
     lifetime: Bucket
 
 
+class Weather(BaseModel):
+    temp_c: Optional[float] = None
+    code: Optional[int] = None
+    condition: str = ""          # short English label, e.g. "Cloudy"
+    icon: str = ""               # one of: clear/partly/cloud/rain/snow/fog
+    city: str = ""
+
+
+class DeepSeek(BaseModel):
+    balance: Optional[float] = None
+    currency: str = "CNY"
+    granted: Optional[float] = None
+    topped: Optional[float] = None
+    today_tokens: int = 0        # deepseek-model tokens today (via ccusage)
+    available: bool = False
+
+
 class UsageReport(BaseModel):
     updated_at: datetime
     source: str = "ccusage"
     claude: ClaudeUsage
     other: list[OtherAgentUsage] = Field(default_factory=list)
+    weather: Optional[Weather] = None
+    deepseek: Optional[DeepSeek] = None
