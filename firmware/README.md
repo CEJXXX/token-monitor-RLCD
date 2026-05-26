@@ -26,9 +26,14 @@ firmware/
     └── user_app/             # glue: wifi init, ui init, polling task
 ```
 
-`port_bsp/` and `app_bsp/` are an unmodified copy of the vendor demo at
-`ESP32-S3-RLCD-4.2-Demo/02_ESP-IDF/09_LVGL_V9_Test/components/`. Don't
-edit them — pull a refresh from the vendor zip if upstream changes.
+The `display_bsp.{h,cpp}` and `lvgl_bsp.{h,cpp}` sources in `port_bsp/` and
+`app_bsp/` are an unmodified copy of the vendor demo at
+`ESP32-S3-RLCD-4.2-Demo/02_ESP-IDF/09_LVGL_V9_Test/components/` — don't edit
+them, pull a refresh from the vendor zip if upstream changes. The only
+change is `port_bsp/CMakeLists.txt`: its driver deps were moved from
+`PRIV_REQUIRES` to `REQUIRES` (and split into `esp_driver_gpio`/
+`esp_driver_spi` for IDF 5.5) because `display_bsp.h` is a public header
+that `main` includes.
 
 ## Build & flash
 
