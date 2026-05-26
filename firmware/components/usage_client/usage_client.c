@@ -62,7 +62,7 @@ esp_err_t usage_client_fetch(const char *url, const char *token, usage_report_t 
         .url           = url,
         .event_handler = http_evt,
         .user_data     = &r,
-        .timeout_ms    = 8000,
+        .timeout_ms    = 30000,   // bridge keeps cache warm, but allow margin for a cold start
     };
     esp_http_client_handle_t client = esp_http_client_init(&cfg);
     if (token && token[0]) {

@@ -28,7 +28,7 @@ from schema import (
 from sources.claude_local import fetch_claude, fetch_other_agents
 
 
-CACHE_TTL_SEC = int(os.environ.get("RLCD_CACHE_TTL", "60"))
+REFRESH_INTERVAL_SEC = int(os.environ.get("RLCD_REFRESH_SEC", "45"))
 INCLUDE_OTHERS = os.environ.get("RLCD_INCLUDE_OTHERS", "1") != "0"
 AUTH_TOKEN = os.environ.get("RLCD_AUTH_TOKEN") or None  # blank/unset = no auth
 
@@ -49,24 +49,37 @@ def _build_live_report() -> UsageReport:
 
 
 def _get_cached() -> tuple[UsageReport | None, str | None]:
+    # Non-blocking: a background thread keeps the cache warm, so clients
+    # (the ESP32, with a short HTTP timeout) never wait on a cold ccusage run.
     with _cache_lock:
-        rep = _cache.get("report")
-        ts = _cache.get("ts", 0.0)
-        err = _cache.get("error")
-        fresh = rep is not None and (time.time() - ts) < CACHE_TTL_SEC
-        if fresh:
-            return rep, None
+        return _cache.get("report"), _cache.get("error")
+
+
+def _refresh_once() -> None:
     try:
         rep = _build_live_report()
         with _cache_lock:
             _cache.update(report=rep, ts=time.time(), error=None)
-        return rep, None
     except Exception as e:
-        msg = f"{type(e).__name__}: {e}"
         with _cache_lock:
-            _cache["error"] = msg
-            rep = _cache.get("report")
-        return rep, msg
+            _cache["error"] = f"{type(e).__name__}: {e}"
+
+
+def _refresher_loop() -> None:
+    while True:
+        _refresh_once()
+        time.sleep(REFRESH_INTERVAL_SEC)
+
+
+_refresher_started = False
+
+
+def _start_refresher() -> None:
+    global _refresher_started
+    if _refresher_started:
+        return
+    _refresher_started = True
+    threading.Thread(target=_refresher_loop, name="usage-refresher", daemon=True).start()
 
 
 def _mock_report() -> UsageReport:
@@ -104,6 +117,11 @@ def _mock_report() -> UsageReport:
             ),
         ],
     )
+
+
+@app.on_event("startup")
+def _on_startup():
+    _start_refresher()
 
 
 @app.get("/healthz")
