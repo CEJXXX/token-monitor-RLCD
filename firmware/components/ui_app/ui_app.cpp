@@ -149,9 +149,9 @@ void ui_app_update(const usage_report_t *r)
 
     // claude bars
     int p5 = r->limits.util_5h_x100, p7 = r->limits.util_7d_x100;
-    if (p5 >= 0) { lv_bar_set_value(bar_5h, p5, LV_ANIM_OFF); char b[8]; snprintf(b, 8, "%d%%", p5); lv_label_set_text(lbl_5h_pct, b); }
-    if (p7 >= 0) { lv_bar_set_value(bar_7d, p7, LV_ANIM_OFF); char b[8]; snprintf(b, 8, "%d%%", p7); lv_label_set_text(lbl_7d_pct, b); }
-    { char b[24]; int m = r->limits.reset_5h_min;
+    if (p5 >= 0) { lv_bar_set_value(bar_5h, p5, LV_ANIM_OFF); char b[16]; snprintf(b, 16, "%d%%", p5); lv_label_set_text(lbl_5h_pct, b); }
+    if (p7 >= 0) { lv_bar_set_value(bar_7d, p7, LV_ANIM_OFF); char b[16]; snprintf(b, 16, "%d%%", p7); lv_label_set_text(lbl_7d_pct, b); }
+    { char b[40]; int m = r->limits.reset_5h_min;
       if (m >= 0) snprintf(b, sizeof(b), "reset in %dh%02dm", m / 60, m % 60);
       else        snprintf(b, sizeof(b), "reset --");
       lv_label_set_text(lbl_reset, b); }
