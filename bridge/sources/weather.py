@@ -16,7 +16,9 @@ CAIYUN_KEY = os.environ.get("CAIYUN_API_KEY") or None
 LAT  = float(os.environ.get("RLCD_WEATHER_LAT",  "22.5431"))
 LON  = float(os.environ.get("RLCD_WEATHER_LON",  "114.0579"))
 CITY = os.environ.get("RLCD_WEATHER_CITY", "SHENZHEN")
-TTL  = int(os.environ.get("RLCD_WEATHER_TTL", "600"))  # seconds
+# Caiyun has a finite total quota — default once/day; open-meteo is unlimited — default 10 min
+_DEFAULT_TTL = 86400 if CAIYUN_KEY else 600
+TTL = int(os.environ.get("RLCD_WEATHER_TTL", str(_DEFAULT_TTL)))
 
 # Caiyun skycon -> (short label, icon key)
 _SKYCON: dict[str, tuple[str, str]] = {
