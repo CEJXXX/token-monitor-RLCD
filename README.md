@@ -1,5 +1,7 @@
 # token-monitor-RLCD
 
+[中文文档](README.zh.md)
+
 A desktop ornament that shows your live Claude (Pro/Max + API) and DeepSeek usage on a Waveshare ESP32-S3-RLCD-4.2 reflective-LCD board.
 
 ```
@@ -105,10 +107,10 @@ Create `bridge/.env` (git-ignored) with any of these:
 ```ini
 RLCD_HOST=0.0.0.0          # bind address (default 0.0.0.0)
 RLCD_PORT=7777              # bind port    (default 7777)
-RLCD_AUTH_TOKEN=<random>   # auth token — set this if reachable beyond loopback
+RLCD_AUTH_TOKEN=<random>   # required when bridge is reachable beyond loopback
 RLCD_WEATHER_LAT=22.5431   # your latitude  (default: Shenzhen)
 RLCD_WEATHER_LON=114.0579  # your longitude
-RLCD_WEATHER_CITY=MYTOWN   # city label shown on device (≤8 chars)
+RLCD_WEATHER_CITY=MYTOWN   # city label on device (≤8 chars)
 DEEPSEEK_API_KEY=sk-...    # enables DeepSeek balance display (optional)
 RLCD_WEEKLY_LIMIT_USD=100  # your weekly budget — enables the weekly % bar
 RLCD_BLOCK_LIMIT_USD=20    # your 5h window budget — enables the 5h % bar
@@ -145,7 +147,7 @@ Each run costs one 1-token Haiku message (negligible). If the OAuth token
 expires, `limits.status` becomes `stale` and the device keeps showing the last
 good values.
 
-> Anthropic does **not** publish plan limits (tokens or USD) via API. Set
+> Anthropic does **not** publish plan limits via API. Set
 > `RLCD_WEEKLY_LIMIT_USD` / `RLCD_BLOCK_LIMIT_USD` to enable the % bars.
 
 ### Step 5 — Build and flash the firmware
@@ -153,7 +155,7 @@ good values.
 #### Prerequisites
 
 - [ESP-IDF v5.x](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/get-started/)
-- Or on Windows: download the **Universal Online Installer** from <https://dl.espressif.com/dl/esp-idf/> (pick latest v5.x, target `esp32s3`).
+- Windows: download the **Universal Online Installer** from <https://dl.espressif.com/dl/esp-idf/> (pick latest v5.x, target `esp32s3`).
 
 #### Linux / macOS
 
@@ -166,7 +168,7 @@ idf.py set-target esp32s3
 idf.py build flash monitor       # Ctrl+] to exit monitor
 ```
 
-#### Windows (PowerShell via ESP-IDF shortcut)
+#### Windows (PowerShell via ESP-IDF Start Menu shortcut)
 
 ```powershell
 cd C:\path\to\token-monitor-RLCD\firmware
@@ -180,20 +182,23 @@ idf.py build flash monitor
 
 | Key | Example | Notes |
 |-----|---------|-------|
-| `RLCD_WIFI_SSID` | `"MyNetwork"` | 2.4 GHz network (ESP32 does not support 5 GHz) |
+| `RLCD_WIFI_SSID` | `"MyNetwork"` | 2.4 GHz only (ESP32 does not support 5 GHz) |
 | `RLCD_WIFI_PASSWORD` | `"password"` | WPA2 |
 | `RLCD_BRIDGE_URL` | `"http://192.168.1.42:7777/api/usage"` | LAN IP of bridge host |
 | `RLCD_BRIDGE_TOKEN` | `""` | Match `RLCD_AUTH_TOKEN` if set, else leave empty |
-| `RLCD_POLL_SEC` | `60` | How often to poll the bridge |
+| `RLCD_POLL_SEC` | `60` | Poll interval in seconds |
 
-For overlay-network deployments (Tailscale / ZeroTier), use the overlay IP of the bridge host (e.g. `http://100.x.x.x:7777/api/usage` for Tailscale, `http://10.x.x.x:7777/api/usage` for ZeroTier).
+For overlay-network deployments (Tailscale / ZeroTier), use the overlay IP of
+the bridge host (e.g. `http://100.x.x.x:7777/api/usage` for Tailscale,
+`http://10.x.x.x:7777/api/usage` for ZeroTier).
 
-First build downloads `lvgl/lvgl@^9.4.0` via the IDF component manager (~50 MB) — needs internet.
+The first build downloads `lvgl/lvgl@^9.4.0` via the IDF component manager
+(~50 MB) — needs internet.
 
 ### Step 6 — Verify
 
-1. Serial monitor should print `connecting to <ssid>...` → `got IP ...`, then the dashboard fills.
-2. Use mock mode first: set `RLCD_BRIDGE_URL` to `http://<bridge>/api/usage?mock=1` and flash — confirm the UI renders correctly.
+1. Serial monitor prints `connecting to <ssid>...` → `got IP ...`, then the dashboard fills.
+2. Use mock mode first: set `RLCD_BRIDGE_URL` to `.../api/usage?mock=1`, flash, confirm the UI renders.
 3. Switch to live mode, run Claude Code for a minute, watch `active_block.tokens_used` increase on the next poll.
 4. Stop the bridge: UI should show `(stale)` but not crash.
 
@@ -203,20 +208,20 @@ First build downloads `lvgl/lvgl@^9.4.0` via the IDF component manager (~50 MB) 
 
 | Scenario | `RLCD_HOST` | Notes |
 |----------|-------------|-------|
-| Bridge on same LAN as the ESP32 | `0.0.0.0` or LAN IP | Simplest. Set `RLCD_AUTH_TOKEN`. |
-| Bridge on VPS / remote (Claude Code runs there) | Overlay-network IP (Tailscale / ZeroTier) | ESP32 needs the same overlay reachable from home — typically via a home router or always-on device joining the overlay. **Never expose without a token.** |
+| Bridge on same LAN as ESP32 | `0.0.0.0` or LAN IP | Simplest. Set `RLCD_AUTH_TOKEN`. |
+| Bridge on VPS / remote host | Overlay-network IP (Tailscale / ZeroTier) | ESP32 needs the same overlay reachable from home. **Never expose without a token.** |
 | Firmware bring-up only | `127.0.0.1` | Use `?mock=1`; no data leaves the host. |
 
 ### ZeroTier MTU note
 
-If the bridge is on a VPS reached over ZeroTier and you see the TCP handshake
-succeed but responses never arrive, ZeroTier's default 2800-byte MTU is larger
-than the real path to your home LAN (~1400 bytes). Fix on the VPS:
+If the bridge is on a VPS over ZeroTier and responses never arrive despite the
+TCP handshake succeeding, ZeroTier's default 2800-byte MTU exceeds your real
+path MTU (~1400 bytes). Fix on the VPS:
 
 ```bash
-scripts/vps-zt-mtu-fix.sh      # lowers zt MTU to 1400, clamps TCP MSS to 1360
+scripts/vps-zt-mtu-fix.sh
 sudo cp scripts/rlcd-zt-fix.service /etc/systemd/system/
-sudo systemctl enable --now rlcd-zt-fix.service   # persists across reboots
+sudo systemctl enable --now rlcd-zt-fix.service
 ```
 
 The cleanest alternative is to set the ZeroTier network MTU to 1400 in ZeroTier Central.
@@ -228,7 +233,7 @@ The cleanest alternative is to set the ZeroTier network MTU to 1400 in ZeroTier 
 ```
 token-monitor-RLCD/
 ├── bridge/                    # Python FastAPI bridge daemon
-│   ├── bridge.py              # main app + background refresh
+│   ├── bridge.py              # main app + background refresh cache
 │   ├── schema.py              # Pydantic response models
 │   ├── sources/
 │   │   ├── claude_local.py    # ccusage integration
@@ -241,15 +246,15 @@ token-monitor-RLCD/
 │   │   ├── secrets.h.example  # → copy to secrets.h (git-ignored)
 │   │   └── user_config.h      # pin assignments (from vendor BSP)
 │   └── components/
-│       ├── net_app/           # WiFi STA + NTP
+│       ├── net_app/           # WiFi STA + NTP (CST-8)
 │       ├── sensor/            # SHTC3 temp/humidity
 │       ├── usage_client/      # HTTP poll + cJSON parse
-│       └── ui_app/            # LVGL two-column dashboard
+│       └── ui_app/            # LVGL two-column dashboard + icons
 ├── scripts/
-│   ├── install-bridge-linux.sh        # systemd --user installer
-│   ├── rlcd-claude-limits.py          # root timer: write limits JSON
+│   ├── install-bridge-linux.sh          # systemd --user installer
+│   ├── rlcd-claude-limits.py            # root timer: fetch + write limits JSON
 │   ├── rlcd-claude-limits.{service,timer}
-│   └── vps-zt-mtu-fix.sh              # ZeroTier MTU fix
+│   └── vps-zt-mtu-fix.sh                # ZeroTier MTU/MSS fix
 └── docs/
     └── mockup.png             # UI reference mockup
 ```
