@@ -42,6 +42,7 @@ typedef struct {
     int32_t code;
     char    condition[16];
     char    icon[10];       // clear/partly/cloud/rain/snow/fog
+    char    city[16];
     bool    valid;
 } usage_weather_t;
 

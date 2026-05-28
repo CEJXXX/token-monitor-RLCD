@@ -34,20 +34,47 @@ _WMO = {
 _cache: dict[str, object] = {"w": None, "ts": 0.0}
 
 
+def _condition(code: int, cloud_cover: float, precip: float) -> tuple[str, str]:
+    """Refine WMO code with cloud_cover (%) and precipitation (mm) for better accuracy."""
+    # Precipitation beats cloud cover
+    if precip >= 0.3:
+        if code in (71, 73, 75, 77, 85, 86):
+            return "Snow", "snow"
+        if precip >= 2.0 or code in (65, 82):
+            return "Heavy", "rain"
+        return "Rain", "rain"
+    if precip > 0:
+        return "Drizzle", "rain"
+    # No precip: use cloud cover for clearer sky states
+    if code in (45, 48):
+        return "Fog", "fog"
+    if code in (95, 96, 99):
+        return "Storm", "rain"
+    if cloud_cover < 20:
+        return "Clear", "clear"
+    if cloud_cover < 50:
+        return "Partly", "partly"
+    if cloud_cover < 85:
+        return "Cloudy", "cloud"
+    return "Overcast", "cloud"
+
+
 def fetch_weather() -> Weather | None:
     now = time.time()
     if _cache["w"] is not None and now - float(_cache["ts"]) < TTL:
         return _cache["w"]  # type: ignore
     url = (
         f"https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}"
-        "&current=temperature_2m,weather_code&timezone=Asia/Shanghai"
+        "&current=temperature_2m,weather_code,cloud_cover,precipitation&timezone=Asia/Shanghai"
     )
     try:
         with urllib.request.urlopen(url, timeout=10) as r:
             d = json.load(r)
         cur = d["current"]
         code = int(cur["weather_code"])
-        label, icon = _WMO.get(code, ("Cloudy", "partly"))
+        cloud = float(cur.get("cloud_cover") or 0)
+        precip = float(cur.get("precipitation") or 0)
+        label, icon = _condition(code, cloud, precip)
         w = Weather(
             temp_c=round(float(cur["temperature_2m"]), 1),
             code=code,
