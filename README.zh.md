@@ -4,7 +4,7 @@
 
 把你的 Claude（Pro/Max + API）和 DeepSeek 实时用量显示在 Waveshare ESP32-S3-RLCD-4.2 反射式 LCD 上的桌面摆件。
 
-![实物效果图](rlcd_mockup.png)
+![实物效果图](rlcd_mockup.png?raw=true)
 
 ## 实现逻辑
 
